@@ -125,7 +125,7 @@ class FeedForward(nn.Module):
             nn.Linear(n_embd,4 * n_embd),# Linear Layer
             nn.ReLU(), # Activation Function
             nn.Linear(4 * n_embd,n_embd), # projection Layer
-            nn.Dropout(dropot) # Dropout Layer
+            nn.Dropout(dropout) # Dropout Layer
             )
     def forward(self, x):
         return self.net(x)
