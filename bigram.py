@@ -83,6 +83,17 @@ class Head(nn.Module):
         out =wei @v # (B,T,T) @ (B,T,C) -> (B,T,C)
         return out
 
+class Block(nn.Module):
+    "Transformer Block which is communication followed by computation"  
+    def __init__(self, n_embd, n_heads):
+        super().__init__()
+        head_size = n_embd // n_heads
+        self.sa= MultiHeadAttention(n_heads, head_size)
+        self.ffwd = FeedForward(n_embd)
+    def forward(self, x):
+        x = self.sa(x)
+        x = self.ffwd(x)
+        return x
 
 # Multiple Head of Self Attention in Parallels.
 class MultiHeadAttention(nn.Module):
