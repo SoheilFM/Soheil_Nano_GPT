@@ -98,3 +98,6 @@ class BigramLanguageModel(nn.Module):
             # append sampled index to the running sequence
             idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
         return idx
+    
+model = BigramLanguageModel(vocab_size)
+m = model.to(device)
