@@ -72,7 +72,7 @@ class Head(nn.Module):
     
     def forward(self, x):
         B,T,C = x.shape
-        k=self.ket(x)
+        k=self.key(x)
         q=self.query(x)
         #compute attention score 
         wei =q @k.transpose(-2,-1) * C**-0.5 # (B,T,C) @ (B,C,T) -> (B,T,T)
@@ -98,10 +98,11 @@ class BigramLanguageModel(nn.Module):
         B, T = idx.shape
         # idx and targets are both (B,T) tensor of integers
         tok_emb = self.token_embedding_table(idx) # (B,T,C)
-        pos_emb = self.position_embedding_table(torch.arrange(T, device=device)) # (T,C)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,C)
         x = tok_emb + pos_emb # (B,T,C)
         x = self.sa_head(x) # (B,T,C) Apply one head of self attention
         logits = self.lm_head(x) # (B,T,vocab_size) 
+
         
         if targets is None:
             loss = None
@@ -113,13 +114,16 @@ class BigramLanguageModel(nn.Module):
 
         return logits, loss
 
+    
+    
+    
     def generate(self, idx, max_new_tokens):
-        # idx is (B, T) array of indices in the current context
+    # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # crop the context if it's longer than block_size
-            idx_cond= idx[:, -block_size:] # (B, min(T, block_size))
+            idx_cond = idx[:, -block_size:] # (B, min(T, block_size))
             # get the predictions
-            logits, loss = self(idx)
+            logits, loss = self(idx_cond)
             # focus only on the last time step
             logits = logits[:, -1, :] # becomes (B, C)
             # apply softmax to get probabilities
