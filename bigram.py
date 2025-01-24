@@ -82,7 +82,17 @@ class Head(nn.Module):
         v=self.value(x) # (B,T,C)
         out =wei @v # (B,T,T) @ (B,T,C) -> (B,T,C)
         return out
-    
+
+
+# Multiple Head of Self Attention in Parallels.
+Class MultiHeadAttention(nn.Module):
+
+    def __init__(self, n_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(n_heads)])
+        
+    def forward(self, x):
+        return torch.cat([h(x) for h in self.heads], dim=-1)
         
 # Simple Bigram Model
 class BigramLanguageModel(nn.Module):
