@@ -4,14 +4,17 @@ from torch.nn import functional as F
 
 
 # hyperparameters
-batch_size = 8 # how many independent sequences will we process in parallel?
-block_size = 8 # what is the maximum context length for predictions?
-max_iters = 10000
+batch_size = 64 # how many independent sequences will we process in parallel?
+block_size = 256 # what is the maximum context length for predictions?
+max_iters = 5000
 eval_interval = 500
 learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 eval_iters = 200
-n_embd =32
+n_embd = 384
+n_head = 6
+n_layer = 6
+dropout = 0.2
 
 torch.manual_seed(1337)
 
@@ -69,6 +72,7 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer('tril',torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
     
     def forward(self, x):
         B,T,C = x.shape
@@ -78,6 +82,7 @@ class Head(nn.Module):
         wei =q @k.transpose(-2,-1) * C**-0.5 # (B,T,C) @ (B,C,T) -> (B,T,T)
         wei =wei.masked_fill(self.tril[:T, :T] == 0 , float('-inf')) # (B,T,T)
         wei =F.softmax(wei,dim=-1) # (B,T,T)
+        wei = self.dropout(wei) 
         # Performing Weighted Aggregation 
         v=self.value(x) # (B,T,C)
         out =wei @v # (B,T,T) @ (B,T,C) -> (B,T,C)
@@ -105,20 +110,22 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self .proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
         
         
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
-        out = self.proj(out)
+        out = self.dropout(self.proj(out)) # Drop out and Linear Layer
         return  out 
 # A simple Linear Layer 
 class FeedForward(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.net= nn.Sequential(
-            nn.Linear(n_embd,4 * n_embd),
-            nn.ReLU(),
+            nn.Linear(n_embd,4 * n_embd),# Linear Layer
+            nn.ReLU(), # Activation Function
             nn.Linear(4 * n_embd,n_embd) # projection Layer
+            nn.Dropout(dropot) # Dropout Layer
             )
     def forward(self, x):
         return self.net(x)
@@ -132,11 +139,8 @@ class BigramLanguageModel(nn.Module):
         # each token directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.Sequential(
-        Block(n_embd,n_head = 4) ,
-        Block(n_embd,n_head =  4), 
-        Block(n_embd,n_head= 4),) # 3 blocks
-        nn.layernorm(n_embd)
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
+        self.ln_f= nn.LayerNorm(n_embd) # Final layer norm
         self.lm_head = nn.Linear(n_embd, vocab_size)
         
     def forward(self, idx, targets=None):
