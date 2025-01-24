@@ -62,7 +62,7 @@ def estimate_loss():
     return out
 
 # Add Head ( one head of self attention )
-class Head(nn.Moudle):
+class Head(nn.Module):
     def __init__(self, head_size):
         super().__init__()
         self.key = nn.Linear(n_embd, head_size, bias=False)
